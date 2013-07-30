@@ -538,6 +538,7 @@ TODO:
     <path id="quick.plugins.build.path">
       <path refid="quick.compiler.build.path"/>
       <pathelement location="${build-quick.dir}/classes/continuations-plugin"/>
+      <pathelement location="${build-quick.dir}/classes/virtualclasses-plugin"/>
     </path>
 
     <path id="quick.scalacheck.build.path">
@@ -1158,7 +1159,10 @@ TODO:
 
   <target name="quick.plugins"    depends="quick.comp">
     <staged-uptodate              stage="quick" project="plugins">
-      <check><srcfiles dir="${src.dir}/continuations"/></check>
+      <check>
+        <srcfiles dir="${src.dir}/continuations"/>
+        <srcfiles dir="${src.dir}/virtualclasses"/>
+      </check>
       <do>
         <stopwatch name="quick.plugins.timer"/>
 
@@ -1183,6 +1187,16 @@ TODO:
         <staged-scalac with="quick" stage="quick" project="plugins"
                        srcdir="continuations/library" destproject="continuations-library"
                        args="-Xplugin-require:continuations -P:continuations:enable -Xpluginsdir ${build-quick.dir}/misc/scala-devel/plugins"/>
+                       
+        <mkdir dir="${build-quick.dir}/classes/virtualclasses-plugin"/>
+        <staged-scalac with="locker" stage="quick" project="plugins" srcdir="virtualclasses/plugin" destproject="virtualclasses-plugin"/>
+        <copy
+           file="${src.dir}/virtualclasses/plugin/scalac-plugin.xml"
+           todir="${build-quick.dir}/classes/virtualclasses-plugin"/>
+
+        <!-- not very nice to create jar here but needed to load plugin -->
+        <mkdir dir="${build-quick.dir}/misc/scala-devel/plugins"/>
+        <jar whenmanifestonly="fail" destfile="${build-quick.dir}/misc/scala-devel/plugins/virtualclasses.jar" basedir="${build-quick.dir}/classes/virtualclasses-plugin"/>
 
         <stopwatch name="quick.plugins.timer" action="total"/>
       </do>

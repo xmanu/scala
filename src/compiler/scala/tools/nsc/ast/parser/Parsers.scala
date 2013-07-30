@@ -2701,11 +2701,16 @@ self =>
             if (mods.isTrait) (Modifiers(Flags.TRAIT), List())
             else (accessModifierOpt(), paramClauses(name, classContextBounds, ofCaseClass = mods.isCase))
           var mods1 = mods
-          if (mods.isTrait) {
+
+	  /* Begin Oliver */
+          if (settings.YvirtClasses && in.token == SUBTYPE) mods1 |= Flags.DEFERRED
+           /* if (isTrait) {
             if (settings.YvirtClasses && in.token == SUBTYPE) mods1 |= Flags.DEFERRED
-          } else if (in.token == SUBTYPE) {
-            syntaxError("classes are not allowed to be virtual", false)
           }
+	        else if (in.token == SUBTYPE) {
+            syntaxError("classes are not allowed to be virtual", false)
+          }*/
+	  /* End Oliver */
           val template = templateOpt(mods1, name, constrMods withAnnotations constrAnnots, vparamss, tstart)
           if (isInterface(mods1, template.body)) mods1 |= Flags.INTERFACE
           val result = ClassDef(mods1, name, tparams, template)
@@ -2803,7 +2808,9 @@ self =>
      */
     def templateOpt(mods: Modifiers, name: Name, constrMods: Modifiers, vparamss: List[List[ValDef]], tstart: Int): Template = {
       val (parents0, argss, self, body) = (
-        if (in.token == EXTENDS || in.token == SUBTYPE && mods.isTrait) {
+//        if (in.token == EXTENDS || in.token == SUBTYPE && mods.hasTraitFlag) {
+        if (in.token == EXTENDS || in.token == SUBTYPE) {
+        /* end oliver */
           in.nextToken()
           template(isTrait = mods.isTrait)
         }

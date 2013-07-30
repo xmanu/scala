@@ -527,6 +527,9 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def isPrimitiveValueClass   = false
     def isRefinementClass       = false
     override def isTrait        = false
+    
+    def isVirtualClass          = false
+    def isVirtualTrait          = false
 
     /** Qualities of Types, always false for TermSymbols.
      */
