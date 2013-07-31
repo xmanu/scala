@@ -43,8 +43,8 @@ abstract class VCFinalBindingsTransform(val global: Global) extends PluginCompon
   def mkFinalBindingSym(initBinding: Symbol): Symbol = {
     val fbname = finalBindingName(initBinding)
     val fbsym = initBinding.owner.enclClass.newClass(fbname, initBinding.pos).setFlag(SYNTHETIC)
-    //val parents = List(definitions.ObjectClass.tpe, initBinding.tpe)
-    val parents = List(initBinding.tpe)
+    val parents = List(definitions.ObjectClass.tpe, initBinding.tpe)
+    //val parents = List(initBinding.tpe)
     val scope = newScope
     fbsym setInfo ClassInfoType(parents, scope, fbsym)
 

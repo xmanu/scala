@@ -527,7 +527,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def isPrimitiveValueClass   = false
     def isRefinementClass       = false
     override def isTrait        = false
-    
+
     def isVirtualClass          = false
     def isVirtualTrait          = false
 
@@ -2923,6 +2923,8 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     override def isModuleClass             = this hasFlag MODULE
     override def isPackageClass            = this hasFlag PACKAGE
     override def isTrait                   = this hasFlag TRAIT
+    override def isVirtualClass            = (this hasFlag DEFERRED) && isClass
+    override def isVirtualTrait            = (this hasFlag DEFERRED) && isTrait
 
     override def isAnonOrRefinementClass = isAnonymousClass || isRefinementClass
     override def isAnonymousClass        = name containsName tpnme.ANON_CLASS_NAME
