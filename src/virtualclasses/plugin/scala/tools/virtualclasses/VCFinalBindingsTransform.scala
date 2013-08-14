@@ -60,7 +60,8 @@ abstract class VCFinalBindingsTransform(val global: Global) extends PluginCompon
       //factory
       val factory = initBinding.info.decl(factoryName(abstpe)).cloneSymbol(fbsym)
       factory.resetFlag(DEFERRED)
-      factory setInfo factory.tpe.substThis(initBinding, ThisType(fbsym))
+      factory setInfo factory.tpe.substSym(List(abstpe), List(workerTrait))
+      //factory setInfo factory.tpe.substThis(initBinding, ThisType(fbsym))
       scope enter factory
     }
 
@@ -90,21 +91,21 @@ abstract class VCFinalBindingsTransform(val global: Global) extends PluginCompon
       cclazz
     }
 
-    protected def mkFactoryDefDef(factory: Symbol, initBinding: Symbol, fixSymbols: List[Tree]): Tree = {
+    protected def mkFactoryDefDef(factory: Symbol, finalBinding: Symbol, fixSymbols: List[Tree]): Tree = {
       val cclazzSym = fixSymbols.filter(a => a.symbol.name == concreteClassName(factory))(0).symbol
       //mkConcreteClassSym(factory, initBinding)
       //val cclazzDef = ClassDef(cclazzSym, NoMods, List(List()), List(List()), List(), factory.enclClass.pos.focus)
 
       val args = factory.paramss map (_.map(Ident)) //TODO clone or not?
-      val body = New(Select(This(factory.enclClass), cclazzSym), args)
+      val body = localTyper.typed { New(Select(This(factory.enclClass), cclazzSym), args) }
         
         //TypeApply(Select(New(TypeTree(cclazzSym.tpe.substSym(cclazzSym.typeParams, factory.typeParams)), args), definitions.Any_asInstanceOf),
         //List(TypeTree(factory.info.resultType))))
         //TypeApply(Select(New(Ident(cclazzSym), args), definitions.Any_asInstanceOf), List(TypeTree(factory.info.resultType))))
-         
-        atPos(factory.enclClass.pos) {
-          DefDef(factory, Modifiers(factory.flags), body)
-        }
+        
+      //localTyper.typedPos(factory.enclClass.pos) {
+          DefDef(factory.cloneSymbol.setInfo(finalBinding.info.member(vcAbstractTypeName(factory)).tpe), Modifiers(factory.flags), body)
+      //}
     }
 
     protected def mkFinalBinding(initBinding: Symbol): Tree = {
@@ -114,7 +115,7 @@ abstract class VCFinalBindingsTransform(val global: Global) extends PluginCompon
 
       def mkAbsTpeBinding(tpeSym: Symbol): Tree = {
         val workerTrait = finalBinding.info.member(workerTraitName(tpeSym))
-        localTyper.typed {
+        localTyper.typedPos(initBinding.pos) {
         	TypeDef(tpeSym, TypeTree(workerTrait.tpe.substThis(initBinding, ThisType(finalBinding))))
         }
       }
@@ -130,7 +131,7 @@ abstract class VCFinalBindingsTransform(val global: Global) extends PluginCompon
 
       val fixClasses = (factories map mkFixClassBindings)
       
-      val body: List[Tree] = (tpeBindings map mkAbsTpeBinding) ::: fixClasses ::: (factories map (mkFactoryDefDef(_, initBinding, fixClasses)))
+      val body: List[Tree] = (tpeBindings map mkAbsTpeBinding) ::: fixClasses ::: (factories map (mkFactoryDefDef(_, finalBinding, fixClasses)))
 
       val classDef = ClassDef(finalBinding, Modifiers(0), List(List()), List(List()), body, initBinding.pos) //TODO which modifiers?
 
@@ -150,7 +151,7 @@ abstract class VCFinalBindingsTransform(val global: Global) extends PluginCompon
           val fbtree = mkFinalBinding(sym)
           val newCd = ClassDef(mods, name, tparams, transform(templ).asInstanceOf[Template])
           newCd.copyAttrs(cd)
-          List(newCd, fbtree)
+          List(cd, fbtree)
         case _ => List(transform(tree))
       }
     }

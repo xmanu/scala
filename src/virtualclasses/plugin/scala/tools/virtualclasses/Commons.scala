@@ -65,8 +65,10 @@ trait Commons {
       else if (name.startsWith(FINALPREFIX))
         FINALPREFIX
       else ""
-    newTypeName(name.toString.stripPrefix(prefixToStrip))
+    name.toString.stripPrefix(prefixToStrip)
   }
+  
+  def vcAbstractTypeName(clazz: Symbol) = newTypeName(ABSTPEPREFIX + stripAllPrefixes(clazz.name))
 
   def factoryName(clazz: Symbol) = { //TODO make method more robust
     val prefixToStrip =
