@@ -102,10 +102,10 @@ abstract class VCFinalBindingsTransform(val global: Global) extends PluginCompon
         //TypeApply(Select(New(TypeTree(cclazzSym.tpe.substSym(cclazzSym.typeParams, factory.typeParams)), args), definitions.Any_asInstanceOf),
         //List(TypeTree(factory.info.resultType))))
         //TypeApply(Select(New(Ident(cclazzSym), args), definitions.Any_asInstanceOf), List(TypeTree(factory.info.resultType))))
-        
-      //localTyper.typedPos(factory.enclClass.pos) {
-          DefDef(factory.cloneSymbol.setInfo(finalBinding.info.member(vcAbstractTypeName(factory)).tpe), Modifiers(factory.flags), body)
-      //}
+      
+      localTyper.typedPos(factory.enclClass.pos) {
+          DefDef(factory, Modifiers(factory.flags), body)
+      }
     }
 
     protected def mkFinalBinding(initBinding: Symbol): Tree = {
