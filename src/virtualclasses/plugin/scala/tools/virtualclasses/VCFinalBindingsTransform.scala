@@ -4,6 +4,7 @@ import scala.tools.nsc._
 import scala.tools.nsc.symtab.Flags._
 import scala.tools.nsc.plugins.PluginComponent
 import scala.tools.nsc.transform._
+import scala.tools.nsc.ast.TreeDSL
 
 /**
  *
@@ -35,6 +36,12 @@ with TypingTransformers with InfoTransform with Commons {
 
           ClassInfoType(parents map this, decls, clazz)
 
+        case tr @ TypeRef(_,_,_) =>
+          //println(tr.pre.toLongString)
+          //println(tr.toLongString)
+          //println(tr.sym)
+          tr
+          
         case x => x
       }
     }
@@ -51,9 +58,16 @@ with TypingTransformers with InfoTransform with Commons {
     //for every abstract type, create alias and provide factory definition
     for (abstpe <- initBinding.info.decls.filter(isVCAbstractType)) {
       //alias type
-      val absTpeBinding = abstpe.cloneSymbol(fbsym)
-      val workerTrait = initBinding.info.decl(workerTraitName(abstpe))
+      //val absTpeBinding = abstpe.cloneSymbol(fbsym)
+      val workerTrait = initBinding.info.decl(workerTraitName(abstpe)).cloneSymbol(fbsym)
+      
+      //absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
+      //val absTpeBindingInfo = absTpeBinding.info.asInstanceOf[TypeBounds]
+      
+      val absTpeBinding = fbsym.newAliasType(fbsym.pos, abstpe.name.toTypeName) //typeRef(fbsym.thisType, workerTrait, List())
       absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
+      println("TPESYM:  " + absTpeBinding.tpe.typeSymbol)
+      
       absTpeBinding.resetFlag(DEFERRED)
       scope enter absTpeBinding
 
@@ -62,6 +76,7 @@ with TypingTransformers with InfoTransform with Commons {
       factory.resetFlag(DEFERRED)
       //factory setInfo factory.tpe.substSym(List(abstpe), List(workerTrait))
       factory setInfo factory.tpe.substThis(initBinding, ThisType(fbsym))
+      //factory setInfo typeRef(fbsym.thisType, absTpeBinding, List())
       scope enter factory
     }
 
@@ -97,9 +112,12 @@ with TypingTransformers with InfoTransform with Commons {
       val args = factory.paramss map (_.map(Ident)) //TODO clone or not?
       val body = localTyper.typed { New(Select(This(factory.enclClass), cclazzSym), args) }
 
-      localTyper.typedPos(factory.enclClass.pos) {
-        DefDef(factory, Modifiers(factory.flags), body)
-      }
+      val workerTraitSym = factory.enclClass.info.member(workerTraitName(factory))
+      
+      //localTyper.typedPos(factory.enclClass.pos) {
+        
+       DefDef(factory, Modifiers(factory.flags), body)
+      //}
     }
 
     protected def mkFinalBinding(initBinding: Symbol): Tree = {
@@ -110,7 +128,7 @@ with TypingTransformers with InfoTransform with Commons {
       def mkAbsTpeBinding(tpeSym: Symbol): Tree = {
         val workerTrait = finalBinding.info.member(workerTraitName(tpeSym))
         localTyper.typedPos(initBinding.pos) {
-          TypeDef(tpeSym, TypeTree(workerTrait.tpe.substThis(initBinding, ThisType(finalBinding))))
+          TypeDef(tpeSym, TypeTree(workerTrait.tpe.substThis(initBinding, finalBinding)))
         }
       }
 
@@ -129,9 +147,11 @@ with TypingTransformers with InfoTransform with Commons {
 
       val classDef = ClassDef(finalBinding, Modifiers(0), List(List()), List(List()), body, initBinding.pos) //TODO which modifiers?
 
-      localTyper.typedPos(initBinding.pos) {
+      //global.analyzer.UnTyper.traverse(classDef)
+      
+      //localTyper.typed {
           classDef
-      }
+      //}
     }
 
     override def transformStats(stats: List[Tree], exprOwner: Symbol): List[Tree] = {
@@ -146,6 +166,11 @@ with TypingTransformers with InfoTransform with Commons {
           val newCd = ClassDef(mods, name, tparams, transform(templ).asInstanceOf[Template])
           newCd.copyAttrs(cd)
           List(cd, fbtree)
+        case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+          println("tpt: " + dd + "; " + dd.tpt.tpe + "; " + dd.tpt.tpe.getClass().getName() + "; pre: " + dd.tpt.tpe.prefix + "; sym: " + dd.tpt.tpe.asInstanceOf[TypeRef].sym)
+          List(dd)
+          
+          
         case _ => List(transform(tree))
       }
     }

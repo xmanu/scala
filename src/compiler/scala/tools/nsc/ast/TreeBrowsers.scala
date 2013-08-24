@@ -513,7 +513,7 @@ abstract class TreeBrowsers {
         else if (t.isDef) "[defines] "
         else ""
 
-      prefix + t.symbol
+      prefix + t.symbol + " ("+ t.symbol.getClass().getName() + ")"
     }
 
     /** Return t's symbol type  */

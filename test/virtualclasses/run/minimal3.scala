@@ -9,18 +9,14 @@ object minimal {
 class X {
 
   class Y <: {
-    val bla : Y = null
-    val foo = "Bar"
   }
 
 }
 
 abstract class A {
-  type B >: Null <: VC_TRAIT_T$B
+  type B <: VC_TRAIT_T$B
 
   trait VC_TRAIT_T$B { self: B =>
-    //
-    val bla : B = null
   }
   
   def VC_NEW_T$B() : B
