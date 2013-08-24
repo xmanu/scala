@@ -316,7 +316,7 @@ abstract class TreeBrowsers {
           str.append("\nSymbol: ").append(TreeInfo.symbolText(t))
           str.append("\nSymbol owner: ").append(
             if ((t.symbol ne null) && t.symbol != NoSymbol)
-              t.symbol.owner.toString
+              t.symbol.owner.toString + "@" + t.symbol.owner.hashCode
             else
               "NoSymbol has no owner")
           if ((t.symbol ne null) && t.symbol.isType) {
@@ -327,7 +327,7 @@ abstract class TreeBrowsers {
           }
           str.append("\nSymbol tpe: ")
           if (t.symbol ne null) {
-            str.append(t.symbol.tpe).append("\n")
+            str.append(t.symbol.tpe).append(" (").append(t.symbol.tpe.getClass().getName()).append("@").append(t.symbol.tpe.hashCode).append(")").append("\n")
             buf = new StringWriter()
             TypePrinter.toDocument(t.symbol.tpe).format(getWidth() / getColumnWidth(), buf)
             str.append(buf.toString)
@@ -513,7 +513,7 @@ abstract class TreeBrowsers {
         else if (t.isDef) "[defines] "
         else ""
 
-      prefix + t.symbol + " ("+ t.symbol.getClass().getName() + ")"
+      prefix + t.symbol + " ("+ t.symbol.getClass().getName() + "@" + t.hashCode + ")"
     }
 
     /** Return t's symbol type  */

@@ -79,7 +79,7 @@ abstract class VCDecomposeTransform(val global: Global) extends PluginComponent 
     //TODO: include self ref
     private def mkWorkerTraitSym(clazz: Symbol): Symbol = {
       val workerTrait = clazz.cloneSymbol(clazz.owner)
-      workerTrait.setFlag(TRAIT | SYNTHETIC)
+      workerTrait.setFlag(TRAIT | SYNTHETIC | ABSTRACT | INTERFACE)
       workerTrait.resetFlag(DEFERRED)
       workerTrait.name = workerTraitName(clazz)
 
@@ -134,7 +134,7 @@ abstract class VCDecomposeTransform(val global: Global) extends PluginComponent 
         .setAnnotations(clazz.annotations)
 
     // atPhase(ownPhase.next) {
-    absTpe.setInfo(TypeBounds(definitions.NothingClass.tpe, upperBound))
+    absTpe.setInfo(TypeBounds(definitions.NullClass.tpe, upperBound))
     absTpe
     //}
   }

@@ -16,7 +16,7 @@ class X {
 abstract class A {
   type B <: VC_TRAIT_T$B
 
-  trait VC_TRAIT_T$B { self: B =>
+  trait VC_TRAIT_T$B {
   }
   
   def VC_NEW_T$B() : B

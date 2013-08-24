@@ -60,23 +60,28 @@ with TypingTransformers with InfoTransform with Commons {
       //alias type
       //val absTpeBinding = abstpe.cloneSymbol(fbsym)
       val workerTrait = initBinding.info.decl(workerTraitName(abstpe)).cloneSymbol(fbsym)
+      scope enter workerTrait
       
       //absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
       //val absTpeBindingInfo = absTpeBinding.info.asInstanceOf[TypeBounds]
       
+      println(workerTrait.tpe)
       val absTpeBinding = fbsym.newAliasType(fbsym.pos, abstpe.name.toTypeName) //typeRef(fbsym.thisType, workerTrait, List())
       absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
-      println("TPESYM:  " + absTpeBinding.tpe.typeSymbol)
       
       absTpeBinding.resetFlag(DEFERRED)
       scope enter absTpeBinding
 
       //factory
-      val factory = initBinding.info.decl(factoryName(abstpe)).cloneSymbol(fbsym)
-      factory.resetFlag(DEFERRED)
+      val factory = fbsym.newMethod(fbsym.pos, factoryName(abstpe))//initBinding.info.decl(factoryName(abstpe)).cloneSymbol(fbsym).asInstanceOf[MethodSymbol]
+      //factory.resetFlag(DEFERRED)
       //factory setInfo factory.tpe.substSym(List(abstpe), List(workerTrait))
-      factory setInfo factory.tpe.substThis(initBinding, ThisType(fbsym))
+      //factory setInfo factory.tpe.substThis(initBinding, ThisType(fbsym))
+      val factoryInfo = new MethodType(List(), absTpeBinding.cloneSymbol.setInfo(initBinding.info.decl(workerTraitName(abstpe)).cloneSymbol.tpe).toType)//fbsym(factory.pos, factory.name)
+      //factoryInfo setInfo absTpeBinding.tpe
+      factory setInfo factoryInfo
       //factory setInfo typeRef(fbsym.thisType, absTpeBinding, List())
+      //factory.setTypeSignature(absTpeBinding.tpe)
       scope enter factory
     }
 
@@ -116,7 +121,13 @@ with TypingTransformers with InfoTransform with Commons {
       
       //localTyper.typedPos(factory.enclClass.pos) {
         
-       DefDef(factory, Modifiers(factory.flags), body)
+       DefDef(factory, Modifiers(factory.flags), body).setType(NoType)
+      /*DefDef(Modifiers(0),
+             factory.name.toTermName,
+             factory.typeParams map TypeDef,
+             List(),
+             TypeTree(workerTraitSym.tpe.finalResultType) setPos factory.pos.focus,
+             body) setSymbol factory*/
       //}
     }
 
@@ -145,13 +156,14 @@ with TypingTransformers with InfoTransform with Commons {
 
       val body: List[Tree] = (tpeBindings map mkAbsTpeBinding) ::: fixClasses ::: (factories map (mkFactoryDefDef(_, finalBinding, fixClasses)))
 
-      val classDef = ClassDef(finalBinding, Modifiers(0), List(List()), List(List()), body, initBinding.pos) //TODO which modifiers?
+      val termSym = finalBinding.newValue(finalBinding.pos, finalBinding.name).setInfo(NoType)
+      val classDef = ClassDef(finalBinding, Template(List(Ident(initBinding)), emptyValDef, Modifiers(), List(), List(List()), body, initBinding.pos).setSymbol(termSym))//ClassDef(finalBinding, Modifiers(0), List(List()), List(List()), body, initBinding.pos) //TODO which modifiers?
 
       //global.analyzer.UnTyper.traverse(classDef)
       
-      //localTyper.typed {
+      localTyper.typedPos(finalBinding.pos) {
           classDef
-      //}
+      }
     }
 
     override def transformStats(stats: List[Tree], exprOwner: Symbol): List[Tree] = {
