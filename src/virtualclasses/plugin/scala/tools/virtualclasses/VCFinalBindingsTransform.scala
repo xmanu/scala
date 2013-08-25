@@ -59,7 +59,7 @@ with TypingTransformers with InfoTransform with Commons {
     for (abstpe <- initBinding.info.decls.filter(isVCAbstractType)) {
       //alias type
       //val absTpeBinding = abstpe.cloneSymbol(fbsym)
-      val workerTrait = initBinding.info.decl(workerTraitName(abstpe)).cloneSymbol(fbsym)
+      val workerTrait = initBinding.info.decl(workerTraitName(abstpe)).cloneSymbol
       scope enter workerTrait
       
       //absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
@@ -67,7 +67,7 @@ with TypingTransformers with InfoTransform with Commons {
       
       println(workerTrait.tpe)
       val absTpeBinding = fbsym.newAliasType(fbsym.pos, abstpe.name.toTypeName) //typeRef(fbsym.thisType, workerTrait, List())
-      absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
+      absTpeBinding setInfo workerTrait.tpe
       
       absTpeBinding.resetFlag(DEFERRED)
       scope enter absTpeBinding
@@ -121,7 +121,7 @@ with TypingTransformers with InfoTransform with Commons {
       
       //localTyper.typedPos(factory.enclClass.pos) {
         
-       DefDef(factory, Modifiers(factory.flags), body).setType(NoType)
+       DefDef(factory, Modifiers(factory.flags), body)
       /*DefDef(Modifiers(0),
              factory.name.toTermName,
              factory.typeParams map TypeDef,
@@ -162,7 +162,10 @@ with TypingTransformers with InfoTransform with Commons {
       //global.analyzer.UnTyper.traverse(classDef)
       
       localTyper.typedPos(finalBinding.pos) {
+        atPhase(ownPhase.next)
+        {
           classDef
+        }
       }
     }
 
