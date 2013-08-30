@@ -11,8 +11,6 @@ abstract class VCDecomposeTransform(val global: Global) extends PluginComponent 
   import global._
 
   override val phaseName = "vc_decompose"
-    
-  override def changesBaseClasses = false
 
   override def transformInfo(sym: Symbol, tpe: Type) =
     if (sym.isThisSym && sym.owner.isVirtualClass) {

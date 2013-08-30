@@ -18,8 +18,6 @@ with TypingTransformers with InfoTransform with Commons with TreeDSL {
   import definitions._
 
   override val phaseName = "vc_finalbindings"
-    
-  override def changesBaseClasses = false
 
   override def transformInfo(sym: Symbol, tpe: Type) =
     infoTransformer(tpe)
@@ -41,53 +39,40 @@ with TypingTransformers with InfoTransform with Commons with TreeDSL {
           }
 
           ClassInfoType(parents map this, decls, clazz)
-
-        case tr @ TypeRef(_,_,_) =>
-          //println(tr.pre.toLongString)
-          //println(tr.toLongString)
-          //println(tr.sym)
-          tr
           
         case x => x
       }
     }
   }
 
+  /*
+   * Create all symbol for the final binding class (VC_FINAL$<virtualclassname>).
+   */
   def mkFinalBindingSym(initBinding: Symbol): Symbol = {
     val fbname = finalBindingName(initBinding)
     val fbsym = initBinding.owner.enclClass.newClass(fbname, initBinding.pos).setFlag(SYNTHETIC)
-    //val parents = List(definitions.ObjectClass.tpe, initBinding.tpe)
     val parents = List(initBinding.tpe)
     val scope = newScope
     fbsym setInfo ClassInfoType(parents, scope, fbsym)
 
     //for every abstract type, create alias and provide factory definition
     for (abstpe <- initBinding.info.decls.filter(isVCAbstractType)) {
-      //alias type
-      //val absTpeBinding = abstpe.cloneSymbol(fbsym)
       val workerTrait = initBinding.info.decl(workerTraitName(abstpe)).cloneSymbol
       scope enter workerTrait
       
-      //absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
-      //val absTpeBindingInfo = absTpeBinding.info.asInstanceOf[TypeBounds]
-      
-      println(workerTrait.tpe)
-      val absTpeBinding = fbsym.newAliasType(fbsym.pos, abstpe.name.toTypeName) //typeRef(fbsym.thisType, workerTrait, List())
+      val absTpeBinding = fbsym.newAliasType(fbsym.pos, abstpe.name.toTypeName)
       absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
       
       absTpeBinding.resetFlag(DEFERRED)
       scope enter absTpeBinding
 
-      //factory
-      val factory = fbsym.newMethod(fbsym.pos, factoryName(abstpe))//initBinding.info.decl(factoryName(abstpe)).cloneSymbol(fbsym).asInstanceOf[MethodSymbol]
-      //factory.resetFlag(DEFERRED)
-      //factory setInfo factory.tpe.substSym(List(abstpe), List(workerTrait))
-      //factory setInfo factory.tpe.substThis(initBinding, ThisType(fbsym))
-      val factoryInfo = new MethodType(List(), absTpeBinding.cloneSymbol.setInfo(initBinding.info.decl(workerTraitName(abstpe)).cloneSymbol.tpe).toType)//fbsym(factory.pos, factory.name)
-      //factoryInfo setInfo absTpeBinding.tpe
+      //factory method symbol
+      val factory = fbsym.newMethod(fbsym.pos, factoryName(abstpe))
+      
+      val factoryInfo = new MethodType(List(), absTpeBinding.cloneSymbol.setInfo(initBinding.info.decl(workerTraitName(abstpe)).cloneSymbol.tpe).toType)
+      
       factory setInfo factoryInfo
-      //factory setInfo typeRef(fbsym.thisType, absTpeBinding, List())
-      //factory.setTypeSignature(absTpeBinding.tpe)
+      
       scope enter factory
     }
 
@@ -105,6 +90,9 @@ with TypingTransformers with InfoTransform with Commons with TreeDSL {
       }
     }
 
+    /*
+     * Creates the symbol for the VC_FIX$<virtualclassname> class.
+     */
     protected def mkConcreteClassSym(factory: Symbol, finalSym: Symbol, initBinding: Symbol) = {
       val workerTraitSym = factory.enclClass.info.member(workerTraitName(factory))
       val cclazz = finalSym.newClass(finalSym.pos, concreteClassName(factory))
@@ -118,6 +106,9 @@ with TypingTransformers with InfoTransform with Commons with TreeDSL {
       cclazz
     }
 
+    /*
+     * creates the factory method tree
+     */
     protected def mkFactoryDefDef(factory: Symbol, finalBinding: Symbol, fixSymbols: List[Tree]): Tree = {
       val cclazzSym = fixSymbols.filter(a => a.symbol.name == concreteClassName(factory))(0).symbol
 
@@ -126,19 +117,12 @@ with TypingTransformers with InfoTransform with Commons with TreeDSL {
 
       val workerTraitSym = factory.enclClass.info.member(workerTraitName(factory))
       
-      //localTyper.typedPos(factory.enclClass.pos) {
-        
       DEF(factory) === body
-       //DefDef(factory, Modifiers(factory.flags), body)
-      /*DefDef(Modifiers(0),
-             factory.name.toTermName,
-             factory.typeParams map TypeDef,
-             List(),
-             TypeTree(workerTraitSym.tpe.finalResultType) setPos factory.pos.focus,
-             body) setSymbol factory*/
-      //}
     }
 
+    /*
+     * creates the tree for the VC_FINAL$<virtualclassname> classes
+     */
     protected def mkFinalBinding(initBinding: Symbol): Tree = {
       val finalBinding = finalBindingSym(initBinding)
       val tpeBindings = finalBinding.info.members.toList.filter(isVCAbstractType) //TODO should we distinguish between abstract type and its concrete binding? If so, use another predicate
@@ -165,9 +149,7 @@ with TypingTransformers with InfoTransform with Commons with TreeDSL {
       val body: List[Tree] = (tpeBindings map mkAbsTpeBinding) ::: fixClasses ::: (factories map (mkFactoryDefDef(_, finalBinding, fixClasses)))
 
       val termSym = finalBinding.newValue(finalBinding.pos, finalBinding.name).setInfo(NoType)
-      val classDef = ClassDef(finalBinding, Template(List(Ident(initBinding)), emptyValDef, Modifiers(), List(), List(List()), body, initBinding.pos).setSymbol(termSym))//ClassDef(finalBinding, Modifiers(0), List(List()), List(List()), body, initBinding.pos) //TODO which modifiers?
-
-      //global.analyzer.UnTyper.traverse(classDef)
+      val classDef = ClassDef(finalBinding, Template(List(Ident(initBinding)), emptyValDef, Modifiers(), List(), List(List()), body, initBinding.pos).setSymbol(termSym)) //TODO which modifiers?
       
       localTyper.typedPos(finalBinding.pos) {
         atPhase(ownPhase.next)
@@ -189,9 +171,9 @@ with TypingTransformers with InfoTransform with Commons with TreeDSL {
           val newCd = ClassDef(mods, name, tparams, transform(templ).asInstanceOf[Template])
           newCd.copyAttrs(cd)
           List(cd, fbtree)
-        case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          println("tpt: " + dd + "; " + dd.tpt.tpe + "; " + dd.tpt.tpe.getClass().getName() + "; pre: " + dd.tpt.tpe.prefix + "; sym: " + dd.tpt.tpe.asInstanceOf[TypeRef].sym)
-          List(dd)
+        //case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+        //  println("tpt: " + dd + "; " + dd.tpt.tpe + "; " + dd.tpt.tpe.getClass().getName() + "; pre: " + dd.tpt.tpe.prefix + "; sym: " + dd.tpt.tpe.asInstanceOf[TypeRef].sym)
+        //  List(dd)
           
           
         case _ => List(transform(tree))
