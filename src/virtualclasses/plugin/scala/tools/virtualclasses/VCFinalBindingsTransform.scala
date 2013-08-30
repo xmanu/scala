@@ -1,25 +1,31 @@
 package scala.tools.virtualclasses
 
+import scala.tools._
 import scala.tools.nsc._
 import scala.tools.nsc.symtab.Flags._
 import scala.tools.nsc.plugins.PluginComponent
 import scala.tools.nsc.transform._
 import scala.tools.nsc.ast.TreeDSL
 
+
 /**
  *
  */
 
 abstract class VCFinalBindingsTransform(val global: Global) extends PluginComponent with Transform
-with TypingTransformers with InfoTransform with Commons {
+with TypingTransformers with InfoTransform with Commons with TreeDSL {
   import global._
+  import definitions._
 
   override val phaseName = "vc_finalbindings"
+    
+  override def changesBaseClasses = false
 
   override def transformInfo(sym: Symbol, tpe: Type) =
     infoTransformer(tpe)
 
   private object infoTransformer extends TypeMap {
+    
     def apply(tpe: Type) = {
       val tpe0 = mapOver(tpe)
       tpe0 match {
@@ -67,7 +73,7 @@ with TypingTransformers with InfoTransform with Commons {
       
       println(workerTrait.tpe)
       val absTpeBinding = fbsym.newAliasType(fbsym.pos, abstpe.name.toTypeName) //typeRef(fbsym.thisType, workerTrait, List())
-      absTpeBinding setInfo workerTrait.tpe
+      absTpeBinding setInfo workerTrait.tpe.substThis(initBinding, ThisType(fbsym))
       
       absTpeBinding.resetFlag(DEFERRED)
       scope enter absTpeBinding
@@ -91,6 +97,7 @@ with TypingTransformers with InfoTransform with Commons {
   def newTransformer(unit: CompilationUnit) = new Transformer(unit)
 
   class Transformer(unit: CompilationUnit) extends TypingTransformer(unit) {
+    import CODE._
 
     protected def finalBindingSym(vc: Symbol): Symbol = {
       atPhase(ownPhase.next) {
@@ -121,7 +128,8 @@ with TypingTransformers with InfoTransform with Commons {
       
       //localTyper.typedPos(factory.enclClass.pos) {
         
-       DefDef(factory, Modifiers(factory.flags), body)
+      DEF(factory) === body
+       //DefDef(factory, Modifiers(factory.flags), body)
       /*DefDef(Modifiers(0),
              factory.name.toTermName,
              factory.typeParams map TypeDef,
